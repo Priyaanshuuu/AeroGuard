@@ -1,0 +1,23 @@
+# --- Core Framework ---
+django>=5.0
+django-ninja>=1.0       # For High-performance API + Pydantic
+pydantic>=2.0           # For Data Validation (Speed)
+
+# --- Real-Time & Async ---
+channels>=4.0           # For WebSockets
+daphne>=4.0             # The ASGI Server (Required for Async)
+channels-redis>=4.0     # Connects Channels to Redis
+redis>=5.0              # Python client for Redis
+
+# --- Database (Postgres/Neon) ---
+psycopg2-binary>=2.9    # Postgres Driver (Binary is easier to install)
+dj-database-url>=2.0    # Reads DATABASE_URL from .env (Crucial for Neon)
+
+# --- Environment & Settings ---
+python-dotenv>=1.0      # Loads .env file
+pydantic-settings>=2.0  # Manages settings securely
+
+# --- Deployment Utilities ---
+gunicorn>=21.0          # Production Server (for Render)
+uvicorn>=0.27           # Faster ASGI Worker (used by Gunicorn)
+whitenoise>=6.0         # Serves static files on Render
