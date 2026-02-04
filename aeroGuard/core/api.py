@@ -10,6 +10,7 @@ from .schema import (
     IncidentCreateSchema,
     IncidentResponseSchema
 )
+from .utils import calculate_distance
 
 api = NinjaAPI(title="AeroGuard API" , version='1.0.0')
 
@@ -67,3 +68,26 @@ def report_incident(request , payload: IncidentCreateSchema):
 @api.get("/incident" , response=List[IncidentResponseSchema])
 def list_incident(request):
     return Incident.objects.all()
+
+@api.get("/units/nearest" , response = EmegencyUnitResponseSchema)
+def find_nearest_unit(request , latitude: float , longitude : float):
+    units = EmergencyUnit.objects.filter(status = 'AVAILABLE')
+    if not units.exists():
+        return api.create_response(request , {"message" : "No units available"} , status = 404)
+    
+    nearest_unit = None
+    min_distance = float('inf')
+
+    for unit in units:
+        if unit.latitude is None or unit.longitude is None:
+            continue
+
+        dist = calculate_distance(latitude , longitude , unit.latitude , unit.longitude)
+        if dist < min_distance:
+            min_distance = dist
+            nearest_unit = unit
+
+    if nearest_unit:
+        return nearest_unit
+    else:
+        return api.create_response(request , {"message" : "No reachable units found"} , status = 404)
