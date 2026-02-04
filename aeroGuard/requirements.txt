@@ -21,3 +21,5 @@ pydantic-settings>=2.0  # Manages settings securely
 gunicorn>=21.0          # Production Server (for Render)
 uvicorn>=0.27           # Faster ASGI Worker (used by Gunicorn)
 whitenoise>=6.0         # Serves static files on Render
+
+celery>=5.3
