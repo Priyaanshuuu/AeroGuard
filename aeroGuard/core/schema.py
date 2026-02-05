@@ -41,3 +41,7 @@ class IncidentResponseSchema(Schema):
     longitude : float
     resolved_at : Optional[datetime]
 
+
+class MissionAssignmentSchema(Schema):
+    incident_id : int
+

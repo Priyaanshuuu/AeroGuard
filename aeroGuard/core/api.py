@@ -8,9 +8,11 @@ from .schema import (
     EmerrgencyUnitCreateSchema,
     LocationUpdateSchema,
     IncidentCreateSchema,
-    IncidentResponseSchema
+    IncidentResponseSchema,
+    MissionAssignmentSchema
 )
 from .utils import calculate_distance
+from django.db import transaction
 
 api = NinjaAPI(title="AeroGuard API" , version='1.0.0')
 
@@ -91,3 +93,17 @@ def find_nearest_unit(request , latitude: float , longitude : float):
         return nearest_unit
     else:
         return api.create_response(request , {"message" : "No reachable units found"} , status = 404)
+
+
+@api.post("/units/{unit_id}/assign" , response={200 : EmegencyUnitResponseSchema, 409 : dict})
+def assign_unit_to_incident(request , unit_id , payload: MissionAssignmentSchema):
+    try:
+        with transaction.atomic():
+            unit = EmergencyUnit.objects.select_for_update().get(unit_id = unit_id)
+            if unit.status != 'AVAILABLE':
+                return 409 , {"message" : f"Too late! Unit {unit_id} is already {unit.status}"}
+            unit.status = 'BUSY'
+            unit.save()
+            return 200 , unit
+    except EmergencyUnit.DoesNotExist:
+        return 404 , {"message" : "Unit not found"}
