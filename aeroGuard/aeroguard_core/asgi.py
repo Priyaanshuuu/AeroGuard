@@ -1,21 +1,23 @@
-"""
-ASGI config for aeroguard_core project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
-"""
-
 import os
-
+import django
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter
 
+# 1. Setup Django first
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'aeroguard_core.settings')
+django.setup()
 
-django_asgi_app = get_asgi_application()
+# 2. Import Channels tools
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.urls import re_path # <--- CHANGED THIS IMPORT
+from core.consumers import UnitConsumer
 
+# 3. Define the Application
 application = ProtocolTypeRouter({
-    'http': django_asgi_app,
+    "http": get_asgi_application(),
+    "websocket": URLRouter([
+        # regex r"ws/units/?$" means:
+        # "ws/units" is okay.
+        # "ws/units/" is also okay.
+        re_path(r"ws/units/?$", UnitConsumer.as_asgi()),
+    ]),
 })

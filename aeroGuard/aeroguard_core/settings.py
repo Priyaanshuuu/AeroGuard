@@ -81,13 +81,13 @@ ASGI_APPLICATION = 'aeroguard_core.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-CHANNEL_LAYES = {
-    'default': {
-       "BACKEND" : "channels_redis.core.RedisChannelLayer",
-       "CONFIG": {
-           "hosts" : [os.getenv('REDIS_URL')],
-       }
-    }
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)], # Use explicit tuple for local testing
+        },
+    },
 }
 
 DATABASES = {

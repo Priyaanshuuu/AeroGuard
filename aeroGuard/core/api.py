@@ -1,7 +1,7 @@
 from ninja import NinjaAPI
 from ninja import Schema
 from typing import List
-from django.shortcuts import get_list_or_404
+from django.shortcuts import get_list_or_404, get_object_or_404
 from .models import EmergencyUnit , Incident
 from .schema import (
     EmegencyUnitResponseSchema,
@@ -13,6 +13,10 @@ from .schema import (
 )
 from .utils import calculate_distance
 from django.db import transaction
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+import json
+
 
 api = NinjaAPI(title="AeroGuard API" , version='1.0.0')
 
@@ -45,22 +49,7 @@ def list_units(request):
         for unit in units
     ]
 
-@api.patch("/units/{unit_id}/location" , response=EmegencyUnitResponseSchema)
-def update_unit_location(request , unit_id:str , payload : LocationUpdateSchema):
-    unit = get_list_or_404(EmergencyUnit , unit_id = unit_id)[0]
-    unit.latitude = payload.latitude
-    unit.longitude = payload.longitude
 
-    unit.save()
-    return {
-        "id": unit.id,
-        "unit_id": unit.unit_id,
-        "unit_type": unit.unit_type,
-        "status": unit.status,
-        "latitude": float(unit.latitude) if unit.latitude else 0.0,
-        "longitude": float(unit.longitude) if unit.longitude else 0.0,
-        "updated_at": unit.updated_at,
-    }
 
 @api.post("/incidents" , response=IncidentResponseSchema)
 def report_incident(request , payload: IncidentCreateSchema):
@@ -107,3 +96,36 @@ def assign_unit_to_incident(request , unit_id , payload: MissionAssignmentSchema
             return 200 , unit
     except EmergencyUnit.DoesNotExist:
         return 404 , {"message" : "Unit not found"}
+
+@api.patch("/units/{unit_id}/location" , response=EmegencyUnitResponseSchema)
+def update_unit_location(request , unit_id: str, payload: LocationUpdateSchema):
+    unit = get_object_or_404(EmergencyUnit, unit_id=unit_id)
+    unit.latitude = payload.latitude
+    unit.longitude = payload.longitude
+    if payload.status:
+        unit.status = payload.status
+    unit.save()
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "unit_group",
+        {
+            "type": "unit_update",
+            "message": {
+                "unit_id": unit.unit_id,
+                "latitude": float(unit.latitude),
+                "longitude": float(unit.longitude),
+                "status": unit.status
+            }
+        }
+    )
+    return {
+        "id": unit.id,
+        "unit_id": unit.unit_id,
+        "unit_type": unit.unit_type,
+        "status": unit.status,
+        "latitude": float(unit.latitude) if unit.latitude else 0.0,
+        "longitude": float(unit.longitude) if unit.longitude else 0.0,
+        "updated_at": unit.updated_at,
+    }
+ 
