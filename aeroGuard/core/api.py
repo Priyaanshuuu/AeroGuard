@@ -113,6 +113,7 @@ def update_unit_location(request , unit_id: str, payload: LocationUpdateSchema):
             "type": "unit_update",
             "message": {
                 "unit_id": unit.unit_id,
+                "unit_type": unit.unit_type,
                 "latitude": float(unit.latitude),
                 "longitude": float(unit.longitude),
                 "status": unit.status

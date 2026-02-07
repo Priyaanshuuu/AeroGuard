@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'react';
-
-interface UnitData {
-  unit_id: string;
-  latitude: number;
-  longitude: number;
-  status: string;
-}
+import { UnitSchema, type Unit } from '@/lib/schema'
 
 export function useUnitSocket() {
-  const [units, setUnits] = useState<Record<string, UnitData>>({});
+  const [units, setUnits] = useState<Record<string, Unit>>({});
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
@@ -25,11 +19,18 @@ export function useUnitSocket() {
       console.log("📩 Raw Message received:", event.data);
       
       try {
-        const data: UnitData = JSON.parse(event.data);
+        const data = JSON.parse(event.data);
         console.log("📦 Parsed Data:", data);
 
+        const result = UnitSchema.safeParse(data);
+        if (!result.success) {
+          console.error("❌ Zod validation failed:", result.error);
+          return;
+        }
+
+        const validUnit = result.data;
         setUnits((prev) => {
-          const newState = { ...prev, [data.unit_id]: data };
+          const newState = { ...prev, [validUnit.unit_id]: validUnit };
           console.log("📊 Updated State:", newState);
           return newState;
         });

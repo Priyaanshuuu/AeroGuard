@@ -5,7 +5,7 @@ import { useUnitSocket } from "@/hooks/use-socket"; // Import our hook
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Activity, Ambulance, MapPin, Signal, WifiOff } from "lucide-react";
+import { Activity, Ambulance, Flame, Plane, MapPin, Signal, WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
 
 export default function Home() {
@@ -15,6 +15,34 @@ export default function Home() {
   ssr: false, // Server Side Rendering = False
   loading: () => <div className="text-slate-500">Loading Map...</div>
 });
+
+  // Get icon and color based on unit type
+  const getUnitIconAndColor = (unitType: string) => {
+    const normalizedType = unitType?.toUpperCase() || "AMBULANCE";
+    
+    if (normalizedType.includes("FIRE")) {
+      return {
+        Icon: Flame,
+        bgClass: "bg-orange-950/50",
+        borderClass: "border-orange-900",
+        iconColor: "text-orange-400"
+      };
+    } else if (normalizedType.includes("DRONE")) {
+      return {
+        Icon: Plane,
+        bgClass: "bg-blue-950/50",
+        borderClass: "border-blue-900",
+        iconColor: "text-blue-400"
+      };
+    } else {
+      return {
+        Icon: Ambulance,
+        bgClass: "bg-red-950/50",
+        borderClass: "border-red-900",
+        iconColor: "text-red-400"
+      };
+    }
+  };
 
   return (
     <main className="flex h-screen w-full flex-col bg-slate-950 text-slate-50 overflow-hidden">
@@ -48,11 +76,13 @@ export default function Home() {
             <div className="p-4 space-y-3">
               {units.length === 0 && <p className="text-slate-600 text-sm text-center mt-10">Waiting for GPS signals...</p>}
               
-              {units.map((unit) => (
+              {units.map((unit) => {
+                const { Icon, bgClass, borderClass, iconColor } = getUnitIconAndColor(unit.unit_type);
+                return (
                 <Card key={unit.unit_id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors">
                   <CardContent className="p-3 flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-full bg-blue-950/50 flex items-center justify-center border border-blue-900">
-                      <Ambulance className="h-5 w-5 text-blue-400" />
+                    <div className={`h-10 w-10 rounded-full ${bgClass} flex items-center justify-center border ${borderClass}`}>
+                      <Icon className={`h-5 w-5 ${iconColor}`} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -66,7 +96,8 @@ export default function Home() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              );
+              })}
             </div>
           </ScrollArea>
         </aside>
