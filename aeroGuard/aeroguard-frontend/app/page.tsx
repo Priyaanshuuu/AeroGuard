@@ -6,10 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Activity, Ambulance, MapPin, Signal, WifiOff } from "lucide-react";
+import dynamic from "next/dynamic";
 
 export default function Home() {
   // Use the hook!
   const { units, isConnected } = useUnitSocket();
+  const MapViewLeaflet = dynamic(() => import('@/components/ui/map_view_leaflet'), { 
+  ssr: false, // Server Side Rendering = False
+  loading: () => <div className="text-slate-500">Loading Map...</div>
+});
 
   return (
     <main className="flex h-screen w-full flex-col bg-slate-950 text-slate-50 overflow-hidden">
@@ -67,9 +72,8 @@ export default function Home() {
         </aside>
 
         {/* MAIN AREA */}
-        <div className="flex-1 relative bg-slate-950 flex items-center justify-center">
-             {/* Map still coming on Day 10 */}
-             <p className="text-slate-600">Map Module Loading...</p>
+        <div className="flex-1 relative bg-slate-950 p-4">
+             <MapViewLeaflet units={units} />
         </div>
 
       </div>
