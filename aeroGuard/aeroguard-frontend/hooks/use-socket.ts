@@ -1,55 +1,52 @@
-import { useEffect, useState } from 'react';
-import { UnitSchema, type Unit } from '@/lib/schema'
+import { useEffect  , useState } from "react";
+import { UnitSchema , type Unit } from "@/lib/schema";
+import { saveUnitToDB , getAllUnitsFromDB } from "@/lib/db";
 
-export function useUnitSocket() {
-  const [units, setUnits] = useState<Record<string, Unit>>({});
-  const [isConnected, setIsConnected] = useState(false);
+export function useUnitSocket (){
+    const [units , setUnits] = useState<Record<string, Unit>>({});
+    const [isConnected , setIsConnected] = useState(false);
 
-  useEffect(() => {
-    console.log("🔌 Attempting WebSocket Connection...");
-    const socket = new WebSocket('ws://127.0.0.1:8000/ws/units/');
+    useEffect(()=>{
+        async function loadCachedata(){
+            const cachedUnits = await getAllUnitsFromDB();
+            if(cachedUnits.length > 0) {
+                console.log(`Loaded ${cachedUnits.length} units from Offline Storage`);
 
-    socket.onopen = () => {
-      console.log('✅ WebSocket Connected!');
-      setIsConnected(true);
-    };
-
-    socket.onmessage = (event) => {
-      // LOG THE RAW DATA
-      console.log("📩 Raw Message received:", event.data);
-      
-      try {
-        const data = JSON.parse(event.data);
-        console.log("📦 Parsed Data:", data);
-
-        const result = UnitSchema.safeParse(data);
-        if (!result.success) {
-          console.error("❌ Zod validation failed:", result.error);
-          return;
+                const unitMap: Record<string , Unit> = {};
+                cachedUnits.forEach(u => unitMap[u.unit_id]);
+                setUnits(unitMap);
+            }
         }
+        loadCachedata();
+    } , []);
 
-        const validUnit = result.data;
-        setUnits((prev) => {
-          const newState = { ...prev, [validUnit.unit_id]: validUnit };
-          console.log("📊 Updated State:", newState);
-          return newState;
-        });
-      } catch (e) {
-        console.error("❌ JSON Parse Error:", e);
-      }
-    };
+    useEffect(()=>{
+        const socket = new WebSocket('ws://127.0.0.1:8000/ws/units/');
+        socket.onopen = ()=> setIsConnected(true);
+        socket.onclose = () => setIsConnected(false);
 
-    socket.onclose = () => {
-      console.log('⚠️ WebSocket Disconnected');
-      setIsConnected(false);
-    };
+        socket.onmessage = async (event) => {
+            try {
+                const rawData = JSON.parse(event.data);
+                const result = UnitSchema.safeParse(rawData);
 
-    socket.onerror = (error) => {
-      console.error('🚨 WebSocket Error:', error);
-    };
+                if(result.success){
+                    const validUnit = result.data;
 
-    return () => socket.close();
-  }, []);
+                   setUnits((prev)=> ({
+                    ...prev,
+                    [validUnit.unit_id] : validUnit
+                   }));
 
-  return { units: Object.values(units), isConnected };
+                   await saveUnitToDB(validUnit);
+                }
+                
+            } catch (error) {
+                console.log("Socket Error" , error);
+            }
+        }
+        return () => socket.close();
+    } , [])
+
+    return {units : Object.values(units) , isConnected}
 }
