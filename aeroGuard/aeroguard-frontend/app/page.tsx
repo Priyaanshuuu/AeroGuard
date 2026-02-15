@@ -66,31 +66,38 @@ export default function Home() {
 
       <div className="flex flex-1 overflow-hidden">
         
-        <aside className="w-80 border-r border-slate-800 bg-slate-900/50 backdrop-blur-sm z-40 flex flex-col">
-          <div className="p-4 border-b border-slate-800">
-            <h2 className="text-sm font-semibold text-slate-400">ACTIVE UNITS ({units.length})</h2>
+        <aside className="w-80 border-r border-slate-700 bg-gradient-to-b from-slate-800 to-slate-900 backdrop-blur-sm z-40 flex flex-col shadow-lg">
+          <div className="p-4 border-b border-slate-700 bg-slate-800/50">
+            <h2 className="text-lg font-bold text-emerald-400 tracking-wider">ACTIVE UNITS ({units.length})</h2>
+            <p className="text-xs text-slate-400 mt-1">Real-time Fleet Status</p>
           </div>
           
           <ScrollArea className="flex-1">
-            <div className="p-4 space-y-3">
-              {units.length === 0 && <p className="text-slate-600 text-sm text-center mt-10">Waiting for GPS signals...</p>}
+            <div className="p-4 space-y-2">
+              {units.length === 0 && <p className="text-slate-400 text-sm text-center mt-10 font-semibold">Waiting for GPS signals...</p>}
               
               {units.map((unit) => {
                 const { Icon, bgClass, borderClass, iconColor } = getUnitIconAndColor(unit.unit_type);
+                const statusColor = unit.status === 'BUSY' 
+                  ? 'bg-red-500/20 border-red-400 text-red-300' 
+                  : 'bg-emerald-500/20 border-emerald-400 text-emerald-300';
+                
                 return (
-                <Card key={unit.unit_id} className="bg-slate-900 border-slate-800 hover:border-slate-700 transition-colors">
+                <Card key={unit.unit_id} className="bg-slate-700/40 border border-slate-600 hover:border-emerald-400 hover:bg-slate-700/60 transition-all shadow-md">
                   <CardContent className="p-3 flex items-start gap-3">
-                    <div className={`h-10 w-10 rounded-full ${bgClass} flex items-center justify-center border ${borderClass}`}>
+                    <div className={`h-10 w-10 rounded-full ${bgClass} flex items-center justify-center border-2 ${borderClass} flex-shrink-0`}>
                       <Icon className={`h-5 w-5 ${iconColor}`} />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm">{unit.unit_id}</p>
-                        <Badge variant="secondary" className="text-[10px] h-5 bg-emerald-950 text-emerald-400">{unit.status}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-bold text-sm text-slate-100 truncate">{unit.unit_id}</p>
                       </div>
-                      <div className="flex items-center text-xs text-slate-500 mt-1 font-mono">
-                        <MapPin className="h-3 w-3 mr-1" /> 
-                        {unit.latitude.toFixed(4)}, {unit.longitude.toFixed(4)}
+                      <Badge className={`text-[11px] font-semibold border ${statusColor}`}>
+                        {unit.status === 'BUSY' ? '🔴 BUSY' : '🟢 AVAILABLE'}
+                      </Badge>
+                      <div className="flex items-center text-xs text-slate-300 mt-2 font-mono bg-slate-800/50 px-2 py-1 rounded">
+                        <MapPin className="h-3 w-3 mr-1 flex-shrink-0" /> 
+                        <span className="truncate">{unit.latitude.toFixed(4)}, {unit.longitude.toFixed(4)}</span>
                       </div>
                     </div>
                   </CardContent>

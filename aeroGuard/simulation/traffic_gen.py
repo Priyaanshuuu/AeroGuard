@@ -57,10 +57,11 @@ def simulate_movement():
             current_positions[unit_id]["lon"] += move_lon
 
             try:
+                # Update only location, NOT status - so BUSY units stay BUSY
                 data = LocationUpdate(
                     latitude = current_positions[unit_id]["lat"],
                     longitude = current_positions[unit_id]["lon"],
-                    status="AVAILABLE"
+                    status=None  # Don't override the status
                 )
             except Exception as e:
                 print(f"Data Validation Failed : {e}")
