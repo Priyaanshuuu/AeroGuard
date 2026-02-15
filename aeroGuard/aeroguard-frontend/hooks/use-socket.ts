@@ -13,7 +13,7 @@ export function useUnitSocket (){
                 console.log(`Loaded ${cachedUnits.length} units from Offline Storage`);
 
                 const unitMap: Record<string , Unit> = {};
-                cachedUnits.forEach(u => unitMap[u.unit_id]);
+                cachedUnits.forEach(u => unitMap[u.unit_id] = u);
                 setUnits(unitMap);
             }
         }
