@@ -17,13 +17,26 @@ function EmergencyClickHandler(){
 
   useMapEvents({
     click(e){
-      const {lat , lng}  =e.latlng;
+      const {lat , lng}  = e.latlng;
+      
+      // Ask for incident type
+      const incidentType = prompt("What type of incident?\n1. FIRE\n2. MEDICAL\n3. ACCIDENT\n\nEnter: FIRE, MEDICAL, or ACCIDENT");
+      
+      if (!incidentType || !['FIRE', 'MEDICAL', 'ACCIDENT'].includes(incidentType.toUpperCase())) {
+        alert("Invalid incident type!");
+        return;
+      }
+
       setEmergencyPin({lat , lng});
 
       fetch('http://127.0.0.1:8000/api/units/dispatch/', {
         method : 'POST',
         headers: {'Content-Type' : 'application/json'},
-        body: JSON.stringify({latitude : lat , longitude : lng})
+        body: JSON.stringify({
+          latitude : lat , 
+          longitude : lng,
+          incident_type: incidentType.toUpperCase()
+        })
       })
       .then(res=> res.json())
       .then(data => {
@@ -51,17 +64,26 @@ function EmergencyClickHandler(){
 
   export default function MapViewLeaflet({ units }: MapViewProps) {
 
-  // Filter out units with invalid coordinates
-  const validUnits = units.filter(unit => 
-    unit.latitude !== undefined && 
-    unit.longitude !== undefined &&
-    unit.latitude !== null &&
-    unit.longitude !== null &&
-    unit.latitude !== 0 &&
-    unit.longitude !== 0 &&
-    !isNaN(unit.latitude) &&
-    !isNaN(unit.longitude)
-  );
+  // Filter out units with invalid coordinates - more strict validation
+  const validUnits = units.filter(unit => {
+    // Check all data exists and is valid
+    if (!unit || !unit.unit_id) return false;
+    if (unit.latitude === undefined || unit.latitude === null) return false;
+    if (unit.longitude === undefined || unit.longitude === null) return false;
+    if (isNaN(Number(unit.latitude)) || isNaN(Number(unit.longitude))) return false;
+    
+    // Check for reasonable lat/lng ranges (valid coordinates)
+    const lat = Number(unit.latitude);
+    const lng = Number(unit.longitude);
+    
+    // Valid latitude: -90 to 90, Valid longitude: -180 to 180
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+    
+    // Exclude 0,0 as it's usually invalid
+    if (lat === 0 && lng === 0) return false;
+    
+    return true;
+  });
 
   const createIcon = (status: string, type: string = "AMBULANCE") => {
     
@@ -115,10 +137,19 @@ function EmergencyClickHandler(){
         <EmergencyClickHandler />
 
    
-        {validUnits.map((unit) => (
+        {validUnits.map((unit) => {
+          // Extra safety: ensure coordinates are valid numbers
+          const lat = Number(unit.latitude);
+          const lng = Number(unit.longitude);
+          
+          if (isNaN(lat) || isNaN(lng) || lat === 0 && lng === 0) {
+            return null; // Skip this unit
+          }
+          
+          return (
           <Marker 
             key={unit.unit_id} 
-            position={[unit.latitude, unit.longitude]}
+            position={[lat, lng]}
         
             icon={createIcon(unit.status, unit.unit_type)} 
           >
@@ -142,7 +173,8 @@ function EmergencyClickHandler(){
               </div>
             </Popup>
           </Marker>
-        ))}
+          );
+        })}
       </MapContainer>
 
    

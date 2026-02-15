@@ -38,8 +38,8 @@ def create_units(request , payload: EmerrgencyUnitCreateSchema):
             "message": {
                 "unit_id": unit.unit_id,
                 "unit_type": unit.unit_type,
-                "latitude": float(unit.latitude) if unit.latitude else 0.0,
-                "longitude": float(unit.longitude) if unit.longitude else 0.0,
+                "latitude": float(unit.latitude) if (unit.latitude and unit.latitude != 0) else None,
+                "longitude": float(unit.longitude) if (unit.longitude and unit.longitude != 0) else None,
                 "status": unit.status
             }
         }
@@ -60,17 +60,19 @@ def create_units(request , payload: EmerrgencyUnitCreateSchema):
 @api.get("/units" , response=List[EmegencyUnitResponseSchema])
 def list_units(request):
     units = EmergencyUnit.objects.all()
+    # Filter out units without valid coordinates
+    valid_units = [u for u in units if u.latitude and u.longitude]
     return [
         {
             "id": unit.id,
             "unit_id": unit.unit_id,
             "unit_type": unit.unit_type,
             "status": unit.status,
-            "latitude": float(unit.latitude) if unit.latitude else 0.0,
-            "longitude": float(unit.longitude) if unit.longitude else 0.0,
+            "latitude": float(unit.latitude),
+            "longitude": float(unit.longitude),
             "updated_at": unit.updated_at,
         }
-        for unit in units
+        for unit in valid_units
     ]
 
 
@@ -149,33 +151,54 @@ def update_unit_location(request , unit_id: str, payload: LocationUpdateSchema):
         "unit_id": unit.unit_id,
         "unit_type": unit.unit_type,
         "status": unit.status,
-        "latitude": float(unit.latitude) if unit.latitude else 0.0,
-        "longitude": float(unit.longitude) if unit.longitude else 0.0,
+        "latitude": float(unit.latitude) if (unit.latitude and unit.latitude != 0) else None,
+        "longitude": float(unit.longitude) if (unit.longitude and unit.longitude != 0) else None,
         "updated_at": unit.updated_at,
     }
  
 class EmergencyLocation(Schema):
     latitude : float
     longitude: float
+    incident_type: str  # FIRE, MEDICAL, ACCIDENT
 
 @api.post("/units/dispatch/")
 def dispatch_unit(request , payload: EmergencyLocation):
-    available_units = EmergencyUnit.objects.filter(status = 'AVAILABLE')
+    # Validate incident type
+    valid_types = ['FIRE', 'MEDICAL', 'ACCIDENT']
+    if payload.incident_type not in valid_types:
+        return {"error": f"Invalid incident type. Must be one of: {', '.join(valid_types)}"}
+    
+    # Map incident type to preferred unit type
+    unit_type_map = {
+        'FIRE': 'FIRE_TRUCK',
+        'MEDICAL': 'AMBULANCE',
+        'ACCIDENT': 'AMBULANCE'
+    }
+    preferred_unit_type = unit_type_map[payload.incident_type]
+    
+    # First, try to find the preferred unit type
+    available_units = EmergencyUnit.objects.filter(status='AVAILABLE', unit_type=preferred_unit_type)
+    
+    # If no preferred type available, get any available unit
     if not available_units.exists():
-        return {"error" : "No units available to dispatch!!"}
+        available_units = EmergencyUnit.objects.filter(status='AVAILABLE')
+    
+    if not available_units.exists():
+        return {"error": "No units available to dispatch!!"}
+    
     closest_unit = None
     min_distance = float('inf')
 
     for unit in available_units:
         if unit.latitude is None or unit.longitude is None:
             continue
-        dist = calculate_distance(payload.latitude , payload.longitude, float(unit.latitude) , float(unit.longitude))
+        dist = calculate_distance(payload.latitude, payload.longitude, float(unit.latitude), float(unit.longitude))
         if dist < min_distance:
             min_distance = dist
             closest_unit = unit
     
     if not closest_unit:
-        return {"error" : "No reachable units found!"}
+        return {"error": "No reachable units found!"}
     
     closest_unit.status = 'BUSY'
     closest_unit.save()
@@ -183,7 +206,7 @@ def dispatch_unit(request , payload: EmergencyLocation):
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         "unit_group",
-       {
+        {
             "type": "unit_update",
             "message": {
                 "unit_id": closest_unit.unit_id,
@@ -195,6 +218,6 @@ def dispatch_unit(request , payload: EmergencyLocation):
         }
     )
     return{
-        "message" : f"Dispatched {closest_unit.unit_id}!",
+        "message" : f"Dispatched {closest_unit.unit_id} ({closest_unit.unit_type}) for {payload.incident_type}!",
         "distance_km" : round(min_distance , 2)
     }
