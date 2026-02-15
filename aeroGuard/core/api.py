@@ -23,6 +23,10 @@ api = NinjaAPI(title="AeroGuard API" , version='1.0.0')
 
 @api.post("/units" , response=EmegencyUnitResponseSchema)
 def create_units(request , payload: EmerrgencyUnitCreateSchema):
+    # Validate coordinates are not 0,0 (which indicates invalid location)
+    if payload.latitude == 0 and payload.longitude == 0:
+        return api.create_response(request, {"error": "Invalid coordinates: latitude and longitude cannot both be 0"}, status=400)
+    
     unit = EmergencyUnit.objects.create(**payload.dict())
     
     # Broadcast new unit to all connected WebSocket clients
@@ -40,8 +44,10 @@ def create_units(request , payload: EmerrgencyUnitCreateSchema):
             }
         }
     )
-    
+
     return {
+        "message" : f"Dispatched {closest_unit.unit_id}!",
+        "distance_km" : round(min_distance, 2),
         "id": unit.id,
         "unit_id": unit.unit_id,
         "unit_type": unit.unit_type,
@@ -148,3 +154,47 @@ def update_unit_location(request , unit_id: str, payload: LocationUpdateSchema):
         "updated_at": unit.updated_at,
     }
  
+class EmergencyLocation(Schema):
+    latitude : float
+    longitude: float
+
+@api.post("/units/dispatch/")
+def dispatch_unit(request , payload: EmergencyLocation):
+    available_units = EmergencyUnit.objects.filter(status = 'AVAILABLE')
+    if not available_units.exists():
+        return {"error" : "No units available to dispatch!!"}
+    closest_unit = None
+    min_distance = float('inf')
+
+    for unit in available_units:
+        if unit.latitude is None or unit.longitude is None:
+            continue
+        dist = calculate_distance(payload.latitude , payload.longitude, float(unit.latitude) , float(unit.longitude))
+        if dist < min_distance:
+            min_distance = dist
+            closest_unit = unit
+    
+    if not closest_unit:
+        return {"error" : "No reachable units found!"}
+    
+    closest_unit.status = 'BUSY'
+    closest_unit.save()
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "unit_group",
+       {
+            "type": "unit_update",
+            "message": {
+                "unit_id": closest_unit.unit_id,
+                "unit_type": closest_unit.unit_type,
+                "latitude": float(closest_unit.latitude),
+                "longitude": float(closest_unit.longitude),
+                "status": closest_unit.status
+            }
+        }
+    )
+    return{
+        "message" : f"Dispatched {closest_unit.unit_id}!",
+        "distance_km" : round(min_distance , 2)
+    }
