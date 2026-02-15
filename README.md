@@ -37,7 +37,7 @@ AeroGuard is a high-performance, event-driven fleet tracking and emergency dispa
 ### 1. Backend Setup
 ```bash
 # Clone the repository
-git clone [https://github.com/YOUR_USERNAME/AeroGuard.git](https://github.com/YOUR_USERNAME/AeroGuard.git)
+git clone [https://github.com/Priyaanshuuu/AeroGuard.git](https://github.com/Priyaanshuuu/AeroGuard.git)
 cd AeroGuard/backend
 
 # Create and activate virtual environment
