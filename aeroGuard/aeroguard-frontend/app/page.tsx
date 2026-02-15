@@ -1,22 +1,22 @@
 "use client"; 
 
-import { useUnitSocket } from "@/hooks/use-socket"; // Import our hook
-// ... keep existing imports ...
+import { useUnitSocket } from "@/hooks/use-socket"; 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Activity, Ambulance, Flame, Plane, MapPin, Signal, WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
+import RegisterUnit from "@/components/register_form";
 
 export default function Home() {
-  // Use the hook!
+ 
   const { units, isConnected } = useUnitSocket();
   const MapViewLeaflet = dynamic(() => import('@/components/ui/map_view_leaflet'), { 
-  ssr: false, // Server Side Rendering = False
+  ssr: false, 
   loading: () => <div className="text-slate-500">Loading Map...</div>
 });
 
-  // Get icon and color based on unit type
+ 
   const getUnitIconAndColor = (unitType: string) => {
     const normalizedType = unitType?.toUpperCase() || "AMBULANCE";
     
@@ -46,8 +46,8 @@ export default function Home() {
 
   return (
     <main className="flex h-screen w-full flex-col bg-slate-950 text-slate-50 overflow-hidden">
+      <RegisterUnit/>
       
-      {/* HEADER */}
       <header className="flex h-16 items-center border-b border-slate-800 bg-slate-950/50 px-6 backdrop-blur-xl z-50">
         <Activity className="mr-2 h-6 w-6 text-emerald-400" />
         <h1 className="text-xl font-bold tracking-tight">AeroGuard <span className="text-slate-500 font-normal">Disaster Response</span></h1>
@@ -66,7 +66,6 @@ export default function Home() {
 
       <div className="flex flex-1 overflow-hidden">
         
-        {/* SIDEBAR - REAL TIME UNIT LIST */}
         <aside className="w-80 border-r border-slate-800 bg-slate-900/50 backdrop-blur-sm z-40 flex flex-col">
           <div className="p-4 border-b border-slate-800">
             <h2 className="text-sm font-semibold text-slate-400">ACTIVE UNITS ({units.length})</h2>
@@ -102,8 +101,7 @@ export default function Home() {
           </ScrollArea>
         </aside>
 
-        {/* MAIN AREA */}
-        <div className="flex-1 relative bg-slate-950 p-4">
+        <div className="flex-1 relative bg-slate-950 overflow-hidden">
              <MapViewLeaflet units={units} />
         </div>
 

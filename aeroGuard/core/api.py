@@ -18,11 +18,29 @@ from asgiref.sync import async_to_sync
 import json
 
 
+
 api = NinjaAPI(title="AeroGuard API" , version='1.0.0')
 
 @api.post("/units" , response=EmegencyUnitResponseSchema)
 def create_units(request , payload: EmerrgencyUnitCreateSchema):
     unit = EmergencyUnit.objects.create(**payload.dict())
+    
+    # Broadcast new unit to all connected WebSocket clients
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "unit_group",
+        {
+            "type": "unit_update",
+            "message": {
+                "unit_id": unit.unit_id,
+                "unit_type": unit.unit_type,
+                "latitude": float(unit.latitude) if unit.latitude else 0.0,
+                "longitude": float(unit.longitude) if unit.longitude else 0.0,
+                "status": unit.status
+            }
+        }
+    )
+    
     return {
         "id": unit.id,
         "unit_id": unit.unit_id,
